@@ -72,6 +72,21 @@ struct UploadView: View {
             }
         }
         .frame(maxHeight: .infinity, alignment: .top)
+        .alert("이미 같은 주의 스케줄이 있습니다. 어떻게 할까요?", isPresented: $viewModel.showingDuplicateAlert) {
+            Button("기존 데이터에 추가", role: .none) {
+                if let start = viewModel.pendingWeekStart {
+                    viewModel.applySchedule(weekStart: start, lines: viewModel.pendingLines)
+                }
+            }
+            Button("기존 데이터 덮어쓰기", role: .destructive) {
+                if let start = viewModel.pendingWeekStart {
+                    viewModel.calendarViewModel.removeWeek(starting: start)
+                    viewModel.applySchedule(weekStart: start, lines: viewModel.pendingLines)
+                }
+            }
+            Button("취소", role: .cancel) { }
+        }
+
         .alert("OCR 실패", isPresented: $viewModel.showingAlert) {
             Button("확인", role: .cancel) { }
         } message: {
