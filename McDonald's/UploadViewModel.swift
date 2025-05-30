@@ -9,13 +9,17 @@ import SwiftUI
 import Vision
 import PhotosUI
 
+struct OCRWord {
+    let text: String
+    let x: CGFloat
+    let y: CGFloat
+}
+
 class UploadViewModel: ObservableObject {
     @Published var image: UIImage? = nil
-    @Published var extractedText: String = ""
     @Published var filteredLines: [String] = []
     @Published var showingAlert = false
     @Published var showingDuplicateAlert = false
-
     @Published var pendingWeekStart: Date? = nil
     @Published var pendingLines: [String] = []
 
@@ -32,8 +36,8 @@ class UploadViewModel: ObservableObject {
 
         await MainActor.run {
             self.image = uiImage
+            recognizeText(from: uiImage)
         }
-        recognizeText(from: uiImage)
     }
 
     func recognizeText(from uiImage: UIImage) {
@@ -47,136 +51,128 @@ class UploadViewModel: ObservableObject {
                 return
             }
 
-            let texts = observations.compactMap { $0.topCandidates(1).first?.string }
-            let combined = texts.joined(separator: "\n")
+            let words: [OCRWord] = observations.compactMap { obs in
+                guard let topCandidate = obs.topCandidates(1).first else { return nil }
+                let box = obs.boundingBox
+                return OCRWord(text: topCandidate.string, x: box.midX, y: box.midY)
+            }
 
             DispatchQueue.main.async {
-                self.extractedText = combined
-                self.parseWorkInfo(from: combined)
+                self.processOCRWords(words)
             }
         }
 
-        request.recognitionLanguages = ["ko-KR"]
+        request.recognitionLanguages = ["ko-KR", "en-US"]
         request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = true
 
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         try? handler.perform([request])
     }
 
-    func parseWorkInfo(from rawText: String) {
-        guard let (weekStart, lines) = extractOpenWeekSchedule(from: rawText) else {
-            print("❌ 접기 표시된 주를 찾지 못했습니다.")
-            return
-        }
+    func processOCRWords(_ words: [OCRWord]) {
+        let fullText = words.map { $0.text }.joined(separator: "\n")
+        self.pendingWeekStart = extractWeekStartDate(from: fullText)
 
-        if calendarViewModel.containsWeek(starting: weekStart) {
-            pendingWeekStart = weekStart
-            pendingLines = lines
-            showingDuplicateAlert = true
-            return
-        }
-
-        applySchedule(weekStart: weekStart, lines: lines)
-    }
-
-    func applySchedule(weekStart: Date, lines: [String]) {
-        let weekdayList = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
-        var resultLines: [String] = []
+        let weekdaysSet = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
+        let groupedLines = groupWordsIntoLines(words)
 
         var weekdays: [String] = []
         var times: [String] = []
 
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if weekdayList.contains(trimmed) {
-                weekdays.append(trimmed)
-            } else {
-                times.append(trimmed)
+        for line in groupedLines {
+            let lineText = line.map { $0.text }.joined(separator: " ").replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespaces)
+
+            for day in weekdaysSet {
+                if lineText.contains(day) && !weekdays.contains(day) {
+                    weekdays.append(day)
+                }
+            }
+
+            let timePattern = #"\d{1,2}:\d{2}\s*~\s*\d{1,2}:\d{2}"#
+            let offPattern = #"\b(OFF|오프|주휴)\b"#
+
+            if let match = lineText.range(of: timePattern, options: .regularExpression) {
+                times.append(String(lineText[match]))
+            } else if let offMatch = lineText.range(of: offPattern, options: .regularExpression) {
+                times.append(String(lineText[offMatch]))
             }
         }
 
-        guard weekdays.count == times.count else {
-            print("⚠️ 요일 수와 시간 수가 일치하지 않습니다.")
-            return
+        if times.count > 7 {
+            times = Array(times.prefix(7))
         }
 
-        calendarViewModel.jumpToMonth(of: weekStart)
+        var resultLines: [String] = []
+        if weekdays.count == 7 && times.count == 7, let start = self.pendingWeekStart {
+            for i in 0..<7 {
+                resultLines.append("\(weekdays[i]) \(times[i])")
+            }
+            self.filteredLines = resultLines
+            self.pendingLines = resultLines
 
-        for i in 0..<weekdays.count {
-            let weekday = weekdays[i]
-            let timeText = times[i]
+            if calendarViewModel.containsWeek(starting: start) {
+                self.showingDuplicateAlert = true
+            } else {
+                applySchedule(weekStart: start, lines: resultLines)
+            }
+        } else {
+            print("⚠️ 요일 수(\(weekdays.count))와 시간 수(\(times.count))가 일치하지 않거나 날짜 인식 실패")
+            self.filteredLines = []
+            self.pendingLines = []
+            self.showingAlert = true
+        }
+    }
 
-            print("✅ \(weekday) → '\(timeText)'")
+    func applySchedule(weekStart: Date, lines: [String]) {
+        for line in lines {
+            let parts = line.split(separator: " ", maxSplits: 1).map { String($0) }
+            guard parts.count == 2 else { continue }
+            let weekday = parts[0]
+            let timeText = parts[1]
 
             if timeText.contains("OFF") || timeText.contains("주휴") || timeText.contains("오프") {
                 let label = timeText.contains("주휴") ? "주휴" : "OFF"
                 calendarViewModel.addRestDay(weekday: weekday, label: label, weekStartDate: weekStart)
             } else if timeText.contains("~") {
                 calendarViewModel.addWorkDay(weekday: weekday, timeRange: timeText, weekStartDate: weekStart)
-            } else {
-                print("⚠️ 시간 형식이 아니어서 무시됨")
             }
-
-            resultLines.append("\(weekday) \(timeText)")
         }
-
-        self.filteredLines = resultLines
     }
 
-    func extractOpenWeekSchedule(from text: String) -> (Date, [String])? {
-        let lines = text.components(separatedBy: .newlines)
-        let regex = try! NSRegularExpression(pattern: #"(\d{4})[-./](\d{2})[-./](\d{2})\s*~\s*(\d{4})[-./](\d{2})[-./](\d{2})"#)
+    func groupWordsIntoLines(_ words: [OCRWord], yThreshold: CGFloat = 0.02) -> [[OCRWord]] {
+        var lines: [[OCRWord]] = []
+        let sorted = words.sorted { $0.y > $1.y }
 
-        var weekStartDate: Date?
-        var resultLines: [String] = []
-
-        for i in 0..<lines.count {
-            let trimmed = lines[i].trimmingCharacters(in: .whitespaces)
-
-            if trimmed.contains("접기") {
-                for offset in (1...5) {
-                    let j = i - offset
-                    if j >= 0 {
-                        let maybeDateLine = lines[j]
-                        if let match = regex.firstMatch(in: maybeDateLine, range: NSRange(maybeDateLine.startIndex..., in: maybeDateLine)) {
-                            let yearRange = match.range(at: 1)
-                            let monthRange = match.range(at: 2)
-                            let dayRange = match.range(at: 3)
-
-                            let year = String(maybeDateLine[Range(yearRange, in: maybeDateLine)!])
-                            let month = String(maybeDateLine[Range(monthRange, in: maybeDateLine)!])
-                            let day = String(maybeDateLine[Range(dayRange, in: maybeDateLine)!])
-
-                            let startStr = "\(year)-\(month)-\(day)"
-                            weekStartDate = DateFormatter.yyyyMMdd.date(from: startStr)
-                            break
-                        }
-                    }
-                }
-
-                for k in (i+1)..<lines.count {
-                    let content = lines[k].trimmingCharacters(in: .whitespaces)
-                    if content.contains("상세") { break }
-                    if content.contains("요일") || content.contains("OFF") || content.contains("주휴") || content.contains("~") {
-                        resultLines.append(content)
-                    }
-                }
-                break
+        for word in sorted {
+            if let index = lines.firstIndex(where: { abs($0.first!.y - word.y) < yThreshold }) {
+                lines[index].append(word)
+            } else {
+                lines.append([word])
             }
         }
 
-        if let start = weekStartDate, !resultLines.isEmpty {
-            return (start, resultLines)
+        return lines.filter { line in
+            let combinedText = line.map { $0.text }.joined(separator: " ")
+            return combinedText.contains("~") || combinedText.contains("OFF") || combinedText.contains("주휴") || combinedText.contains("요일")
+        }
+    }
+
+    func extractWeekStartDate(from text: String) -> Date? {
+        let pattern = #"(\d{4})[.\-/](\d{2})[.\-/](\d{2})\s*~\s*\d{4}[.\-/]\d{2}[.\-/]\d{2}"#
+        let regex = try? NSRegularExpression(pattern: pattern)
+
+        if let match = regex?.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) {
+            let year = Int((text as NSString).substring(with: match.range(at: 1)))!
+            let month = Int((text as NSString).substring(with: match.range(at: 2)))!
+            let day = Int((text as NSString).substring(with: match.range(at: 3)))!
+
+            var components = DateComponents()
+            components.year = year
+            components.month = month
+            components.day = day
+            return Calendar.current.date(from: components)
         }
         return nil
     }
 }
-
-extension DateFormatter {
-    static let yyyyMMdd: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f
-    }()
-}
-
