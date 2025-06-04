@@ -22,7 +22,7 @@ struct McDonaldsApp: App {
                 }
 
                 NavigationView {
-                    WorkCalendarView(viewModel: calendarViewModel)
+                    WorkCalendarView(viewModel:     calendarViewModel)
                 }
                 .tabItem {
                     Label("급여 달력", systemImage: "calendar")

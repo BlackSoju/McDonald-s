@@ -26,11 +26,20 @@ class WorkCalendarViewModel: ObservableObject {
 
     func calculateWorkHours(start: String, end: String) -> Double {
         guard let startDate = timeFormatter.date(from: start),
-              let endDate = timeFormatter.date(from: end) else { return 0 }
+              let endDateRaw = timeFormatter.date(from: end) else { return 0 }
+
+        // endTime이 startTime보다 빠르면 익일로 간주
+        let endDate = endDateRaw < startDate
+            ? Calendar.current.date(byAdding: .day, value: 1, to: endDateRaw)!
+            : endDateRaw
+
         let total = endDate.timeIntervalSince(startDate) / 3600
+
+        // 휴게시간 적용
         let breakTime: Double = total >= 9 ? 1.0 : 0.5
         return max(total - breakTime, 0)
     }
+
 
     func addWorkDay(weekday: String, timeRange: String, weekStartDate: Date) {
         let components = timeRange.components(separatedBy: "~")
@@ -112,4 +121,9 @@ class WorkCalendarViewModel: ObservableObject {
             }
         }
     }
+    
+    func timeRangeForDate(_ date: Date) -> String? {
+        return workDays[date]?.timeRangeString
+    }
 }
+	

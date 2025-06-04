@@ -36,9 +36,9 @@ class UploadViewModel: ObservableObject {
         }
 
         ocrService.recognizeText(from: uiImage) { [weak self] words in
-            guard let self = self else { return }
-
             Task { @MainActor in
+                guard let self = self else { return }
+
                 if let words = words {
                     self.processOCRWords(words)
                 } else {
@@ -48,7 +48,7 @@ class UploadViewModel: ObservableObject {
         }
     }
 
-    @MainActor
+
     func processOCRWords(_ words: [OCRWord]) {
         let fullText = words.map { $0.text }.joined(separator: "\n")
         self.pendingWeekStart = extractWeekStartDate(from: fullText)
@@ -141,14 +141,31 @@ class UploadViewModel: ObservableObject {
     }
 
     func extractWeekStartDate(from text: String) -> Date? {
-        let pattern = #"(\d{4})[.\-/](\d{2})[.\-/](\d{2})\s*~\s*\d{4}[.\-/]\d{2}[.\-/]\d{2}"#
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) else { return nil }
+        let lines = text.components(separatedBy: .newlines)
+        let weekRangePattern = #"20\d{2}-\d{2}-\d{2}\s*~\s*20\d{2}-\d{2}-\d{2}"#
+        let regex = try? NSRegularExpression(pattern: weekRangePattern)
 
-        let year = Int((text as NSString).substring(with: match.range(at: 1)))!
-        let month = Int((text as NSString).substring(with: match.range(at: 2)))!
-        let day = Int((text as NSString).substring(with: match.range(at: 3)))!
+        var matchedRanges: [(String, Int)] = []
 
-        return Calendar.current.date(from: DateComponents(year: year, month: month, day: day))
+        for (index, line) in lines.enumerated() {
+            if let _ = regex?.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)) {
+                matchedRanges.append((line, index))
+            }
+        }
+
+        if let targetIndex = lines.firstIndex(where: { $0.contains("월요일") }) {
+            let sorted = matchedRanges.sorted { abs($0.1 - targetIndex) < abs($1.1 - targetIndex) }
+            if let (matchedLine, _) = sorted.first {
+                let datePattern = #"(\d{4})-(\d{2})-(\d{2})"#
+                if let dateMatch = matchedLine.range(of: datePattern, options: .regularExpression) {
+                    let dateString = String(matchedLine[dateMatch])
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "yyyy-MM-dd"
+                    return formatter.date(from: dateString)
+                }
+            }
+        }
+
+        return nil
     }
 }
