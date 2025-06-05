@@ -11,44 +11,50 @@ struct WorkDayDetailView: View {
     let workDay: WorkDay
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("상세 근무 정보")
-                .font(.title2)
-                .bold()
+                .font(.title2).bold()
+                .padding(.bottom)
 
-            Text("날짜: \(formattedDate(workDay.date))")
-            Text("근무 시간: \(workDay.timeRangeString)")
-            Text("근무 시간: \(String(format: "%.1f", workDay.hoursWorked))시간")
-            Text("일급: \(formattedWage(Int(workDay.dailyWage)))원")
+            HStack {
+                Text("날짜:")
+                    .bold()
+                Text(dateString(workDay.date))
+            }
+
+            HStack {
+                Text("시간:")
+                    .bold()
+                Text(workDay.timeRangeString)
+            }
+
+            HStack {
+                Text("근무 시간:")
+                    .bold()
+                Text(workDay.formattedDurationString)
+            }
+
+            HStack {
+                Text("일급:")
+                    .bold()
+                Text("\(formattedWage(Int(workDay.dailyWage)))원")
+            }
+
+            Spacer()
         }
         .padding()
     }
 
-    // 날짜 형식: 2025년 6월 6일
-    private func formattedDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.dateStyle = .long
-        return formatter.string(from: date)
+    func dateString(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy년 M월 d일 (E)"
+        f.locale = Locale(identifier: "ko_KR")
+        return f.string(from: date)
     }
 
-    // 1,000 단위 콤마 포맷
-    private func formattedWage(_ wage: Int) -> String {
+    func formattedWage(_ amount: Int) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
-        return formatter.string(from: NSNumber(value: wage)) ?? "\(wage)"
-    }
-}
-
-struct WorkDayDetailView_Previews: PreviewProvider {
-    static var previews: some View {
-        let sample = WorkDay(
-            date: Date(),
-            startTime: "10:00",
-            endTime: "19:00",
-            hoursWorked: 8.0,
-            dailyWage: 92000
-        )
-        WorkDayDetailView(workDay: sample)
+        return formatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
     }
 }

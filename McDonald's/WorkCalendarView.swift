@@ -10,11 +10,9 @@ import SwiftUI
 struct WorkCalendarView: View {
     @ObservedObject var viewModel: WorkCalendarViewModel
     @State private var selectedDate: Date?
-    @State private var showDetail = false
 
     var body: some View {
         VStack(spacing: 12) {
-            // 상단 월 이동 버튼 + 월급
             HStack {
                 Button(action: { viewModel.changeMonth(by: -1) }) {
                     Image(systemName: "chevron.left")
@@ -29,7 +27,7 @@ struct WorkCalendarView: View {
             }
             .padding(.horizontal)
 
-            Text("총 월급: \(formattedWage(viewModel.totalWageForCurrentMonth()))원")
+            Text("총 월급: \(formattedWage(viewModel.totalWageForCurrentMonth()))")
                 .font(.subheadline)
                 .foregroundColor(.gray)
                 .padding(.top, 4)
@@ -39,10 +37,15 @@ struct WorkCalendarView: View {
                 calendarGrid(geometry: geometry)
             }
         }
-        // 👇 날짜 누르면 상세 정보 시트 표시
-        .sheet(isPresented: $showDetail) {
-            if let date = selectedDate, let workDay = viewModel.workDays[date] {
+        .sheet(item: Binding(
+            get: { selectedDate.map { IdentifiableDate(date: $0) } },
+            set: { selectedDate = $0?.date }
+        )) { identifiableDate in
+            if let workDay = viewModel.workDays[identifiableDate.date],
+               workDay.hoursWorked > 0 {
                 WorkDayDetailView(workDay: workDay)
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
             }
         }
     }
@@ -65,9 +68,9 @@ struct WorkCalendarView: View {
         let cellHeight = geometry.size.height / 7
 
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 10) {
-            ForEach(0..<7) { index in
-                let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
-                Text(weekdays[index])
+            let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
+            ForEach(weekdays, id: \.self) { day in
+                Text(day)
                     .font(.subheadline).bold()
                     .frame(width: cellWidth, height: cellHeight * 0.15)
             }
@@ -76,6 +79,7 @@ struct WorkCalendarView: View {
                 if let date = date {
                     let weekday = calendar.component(.weekday, from: date)
                     let workDay = viewModel.workDays[date]
+                    let isWorkDay = (workDay?.hoursWorked ?? 0) > 0
 
                     VStack(spacing: 2) {
                         Text("\(calendar.component(.day, from: date))")
@@ -83,24 +87,25 @@ struct WorkCalendarView: View {
                             .bold()
                             .foregroundColor(weekday == 1 ? .red : (weekday == 7 ? .blue : .primary))
 
-                        if let workDay = workDay {
+                        if let workDay = workDay, isWorkDay {
                             Text(workDay.timeRangeString)
                                 .font(.caption2)
                             Text(workDay.formattedDurationString)
                                 .font(.caption2)
                                 .foregroundColor(.gray)
                         } else if let label = viewModel.labelForDate(date) {
-                            Text(label)
+                            Text(label.replacingOccurrences(of: "~", with: ""))
                                 .font(.caption2)
                                 .foregroundColor(.gray)
                         }
                     }
                     .frame(width: cellWidth, height: cellHeight)
-                    .background((workDay?.dailyWage ?? 0) > 0 ? Color.yellow.opacity(0.3) : Color.clear)
+                    .background(isWorkDay ? Color.yellow.opacity(0.3) : Color.clear)
                     .cornerRadius(8)
                     .onTapGesture {
-                        selectedDate = date
-                        showDetail = true
+                        if isWorkDay {
+                            selectedDate = date
+                        }
                     }
                 } else {
                     Color.clear.frame(width: cellWidth, height: cellHeight)
@@ -122,6 +127,11 @@ struct WorkCalendarView: View {
     }
 }
 
+struct IdentifiableDate: Identifiable {
+    let id = UUID()
+    let date: Date
+}
+
 struct WorkCalendarView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
@@ -129,4 +139,3 @@ struct WorkCalendarView_Previews: PreviewProvider {
         }
     }
 }
-
