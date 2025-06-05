@@ -9,7 +9,7 @@ import Foundation
 
 class WorkCalendarViewModel: ObservableObject {
     @Published var workDays: [Date: WorkDay] = [:]
-    @Published var hourlyWage: Double = 10030
+    @Published var hourlyWage: Double = 13030
     @Published var currentMonth: Date = Date()
 
     let formatter: DateFormatter = {
@@ -124,6 +124,20 @@ class WorkCalendarViewModel: ObservableObject {
     
     func timeRangeForDate(_ date: Date) -> String? {
         return workDays[date]?.timeRangeString
+    }
+    
+    func generateCalendar() -> [Date] {
+        var calendar = Calendar.current
+        calendar.locale = Locale(identifier: "ko_KR")
+
+        guard let range = calendar.range(of: .day, in: .month, for: currentMonth),
+              let firstDay = calendar.date(from: calendar.dateComponents([.year, .month], from: currentMonth)) else {
+            return []
+        }
+
+        return range.compactMap { day -> Date? in
+            calendar.date(byAdding: .day, value: day - 1, to: firstDay)
+        }
     }
 }
 	
