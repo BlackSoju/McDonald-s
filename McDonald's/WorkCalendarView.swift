@@ -13,7 +13,7 @@ struct WorkCalendarView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemGroupedBackground)
+            Color.white
                 .ignoresSafeArea()
 
             VStack(spacing: 12) {
@@ -25,8 +25,8 @@ struct WorkCalendarView: View {
 
                 Spacer(minLength: 0)
 
+                weekdayHeader
                 calendarCard
-                    .frame(height: 520)
 
                 Spacer(minLength: 0)
             }
@@ -76,13 +76,25 @@ struct WorkCalendarView: View {
             .foregroundColor(.secondary)
     }
 
+    var weekdayHeader: some View {
+        let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 46), spacing: 4), count: 7), spacing: 0) {
+            ForEach(weekdays, id: \.self) { day in
+                Text(day)
+                    .font(.caption.bold())
+                    .foregroundColor(day == "일" ? .red : (day == "토" ? .blue : .secondary))
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 4)
+    }
+
     var calendarCard: some View {
         VStack(spacing: 8) {
-            weekdayHeader
             calendarGrid
-                .padding(.top, 6)
+                .padding(.horizontal, 4)
         }
-        .padding()
+        .padding(.vertical)
         .background(
             RoundedRectangle(cornerRadius: 24)
                 .fill(Color.white)
@@ -91,21 +103,9 @@ struct WorkCalendarView: View {
         .padding(.horizontal)
     }
 
-    var weekdayHeader: some View {
-        let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
-        return LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7)) {
-            ForEach(weekdays, id: \.self) { day in
-                Text(day)
-                    .font(.caption.bold())
-                    .foregroundColor(day == "일" ? .red : (day == "토" ? .blue : .secondary))
-                    .frame(maxWidth: .infinity)
-            }
-        }
-    }
-
     var calendarGrid: some View {
         let dates = viewModel.generateCalendar()
-        return LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 12) {
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 12) {
             ForEach(dates, id: \.self) { date in
                 CalendarCell(date: date, workDay: viewModel.workDays[date], isToday: Calendar.current.isDateInToday(date), formattedWage: formattedWage) {
                     if let workDay = viewModel.workDays[date], workDay.hoursWorked > 0 {
@@ -136,43 +136,54 @@ struct WorkCalendarView: View {
         let onTap: () -> Void
 
         var body: some View {
-            VStack(spacing: 6) {
-                Text("\(Calendar.current.component(.day, from: date))")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(isToday ? .white : .primary)
-                    .frame(width: 28, height: 28)
-                    .background(isToday ? Color.blue : Color.clear)
-                    .clipShape(Circle())
-
-                Group {
+            ZStack(alignment: .topLeading) {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 6)
                     if let workDay = workDay {
                         if workDay.startTime.contains("OFF") || workDay.startTime.contains("주휴") {
+                            Spacer()
                             Text(workDay.startTime.replacingOccurrences(of: "~", with: ""))
-                                .font(.system(size: 9))
+                                .font(.system(size: 10))
                                 .foregroundColor(workDay.startTime.contains("주휴") ? .orange : .gray)
-                            Text("\u{00a0}")
-                                .font(.system(size: 9))
-                        } else {
-                            Text("\(String(format: "%.1f", workDay.hoursWorked))시간")
-                                .font(.system(size: 9))
-                                .foregroundColor(.gray)
-                            Text("\(formattedWage(Int(workDay.dailyWage)))원")
-                                .font(.system(size: 7).monospacedDigit())
-                                .foregroundColor(.green)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
+                                .frame(maxWidth: .infinity)
                                 .multilineTextAlignment(.center)
+                            Spacer()
+                        } else {
+                            Spacer()
+                            Text("\(String(format: "%.1f", workDay.hoursWorked))시간")
+                                .font(.system(size: 10))
+                                .foregroundColor(.gray)
+                                .frame(maxWidth: .infinity)
+                                .multilineTextAlignment(.center)
+                            Spacer()
+                            Text("\(formattedWage(Int(workDay.dailyWage)))원")
+                                .font(.system(size: 10).monospacedDigit())
+                                .foregroundColor(.blue)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.9)
+                                .multilineTextAlignment(.center)
+                                .padding(.bottom, 6)
                         }
                     } else {
-                        Text("")
-                            .font(.system(size: 9))
-                        Text("")
-                            .font(.system(size: 9))
+                        Spacer()
+                        Text(" ")
+                            .font(.system(size: 10))
+                        Spacer()
                     }
                 }
+
+                VStack {
+                    Text("\(Calendar.current.component(.day, from: date))")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(isToday ? .white : .primary)
+                        .frame(width: 24, height: 24, alignment: .center)
+                        .background(isToday ? Color.blue : Color.clear)
+                        .clipShape(Circle())
+                        .padding([.top, .leading], 6)
+                    Spacer()
+                }
             }
-            .frame(maxWidth: .infinity, minHeight: 80, maxHeight: 80)
-            .padding(4)
+            .frame(minWidth: 46, maxWidth: .infinity, minHeight: 80, maxHeight: 80)
             .background(
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color(.systemGray6))
@@ -186,7 +197,6 @@ struct IdentifiableDate: Identifiable {
     let id = UUID()
     let date: Date
 }
-
 
 struct WorkCalendarView_Previews: PreviewProvider {
     static var previews: some View {
