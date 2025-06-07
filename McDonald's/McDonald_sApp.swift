@@ -28,6 +28,7 @@ struct McDonaldsApp: App {
                     Label("급여 달력", systemImage: "calendar")
                 }
             }
+            .preferredColorScheme(.light)
         }
     }
 }

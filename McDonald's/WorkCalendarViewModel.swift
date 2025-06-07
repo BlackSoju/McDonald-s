@@ -9,7 +9,7 @@ import Foundation
 
 class WorkCalendarViewModel: ObservableObject {
     @Published var workDays: [Date: WorkDay] = [:]
-    @Published var hourlyWage: Double = 13030
+    @Published var hourlyWage: Double = 10310
     @Published var currentMonth: Date = Date()
 
     let formatter: DateFormatter = {
