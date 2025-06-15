@@ -101,7 +101,7 @@ class WorkCalendarViewModel: ObservableObject {
     }
     
     func jumpToMonth(of date: Date) {
-        currentMonth = date
+        currentMonth = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: date)) ?? Date()
     }
     
     func containsWeek(starting weekStartDate: Date) -> Bool {

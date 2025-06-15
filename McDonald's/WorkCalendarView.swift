@@ -10,7 +10,7 @@ import SwiftUI
 struct WorkCalendarView: View {
     @ObservedObject var viewModel: WorkCalendarViewModel
     @State private var selectedDate: Date?
-
+    
     var body: some View {
         VStack(spacing: 0) {
             calendarHeader
@@ -26,28 +26,50 @@ struct WorkCalendarView: View {
             }
         }
     }
-
+    
     private var calendarHeader: some View {
         VStack(spacing: 12) {
-            HStack {
-                Button(action: { viewModel.changeMonth(by: -1) }) {
-                    Image(systemName: "chevron.left")
-                        .font(.title3)
-                        .padding(8)
-                        .background(Color(.systemGray6))
-                        .clipShape(Circle())
-                }
-                Spacer()
+            ZStack {
+                // 가운데: currentMonth 텍스트
                 Text(monthYearString(from: viewModel.currentMonth))
                     .font(.title2.weight(.bold))
                     .foregroundColor(.primary)
-                Spacer()
-                Button(action: { viewModel.changeMonth(by: 1) }) {
-                    Image(systemName: "chevron.right")
-                        .font(.title3)
-                        .padding(8)
-                        .background(Color(.systemGray6))
-                        .clipShape(Circle())
+
+                // 좌우: 이전/다음 버튼 + 오늘 버튼
+                HStack {
+                    Button(action: { viewModel.changeMonth(by: -1) }) {
+                        Image(systemName: "chevron.left")
+                            .font(.title3)
+                            .padding(8)
+                            .background(Color(.systemGray6))
+                            .clipShape(Circle())
+                    }
+
+                    Spacer()
+
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            withAnimation {
+                                viewModel.jumpToMonth(of: Date())
+                            }
+                        }) {
+                            Text("오늘")
+                                .font(.caption.weight(.medium))
+                                .foregroundColor(.blue)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color(.systemGray6))
+                                .clipShape(Capsule())
+                        }
+
+                        Button(action: { viewModel.changeMonth(by: 1) }) {
+                            Image(systemName: "chevron.right")
+                                .font(.title3)
+                                .padding(8)
+                                .background(Color(.systemGray6))
+                                .clipShape(Circle())
+                        }
+                    }
                 }
             }
             .padding(.horizontal)
@@ -59,13 +81,15 @@ struct WorkCalendarView: View {
         .padding(.top, 16)
     }
 
+    
+    
     private var calendarBody: some View {
         GeometryReader { geometry in
             let width = geometry.size.width / 7
             let height = (geometry.size.height - 32) / 6
             let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
             let dates = viewModel.generateCurrentMonthDates()
-
+            
             VStack(spacing: 0) {
                 HStack(spacing: 0) {
                     ForEach(weekdays, id: \.self) { day in
@@ -75,7 +99,7 @@ struct WorkCalendarView: View {
                             .frame(width: width, height: 32)
                     }
                 }
-
+                
                 VStack(spacing: 1) {
                     ForEach(0..<6, id: \.self) { row in
                         HStack(spacing: 0) {
@@ -107,13 +131,13 @@ struct WorkCalendarView: View {
             }
         }
     }
-
+    
     func monthYearString(from date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy년 M월"
         return formatter.string(from: date)
     }
-
+    
     func formattedWage(_ amount: Int) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
@@ -129,7 +153,7 @@ struct CalendarCell: View {
     let width: CGFloat
     let height: CGFloat
     let onTap: () -> Void
-
+    
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -142,9 +166,9 @@ struct CalendarCell: View {
                     .clipShape(Circle())
                     .padding([.top, .trailing], 4)
             }
-
+            
             Spacer()
-
+            
             if let workDay = workDay {
                 VStack(spacing: 2) {
                     if workDay.startTime.contains("OFF") || workDay.startTime.contains("주휴") {
@@ -158,9 +182,9 @@ struct CalendarCell: View {
                     }
                 }
                 .frame(maxHeight: .infinity, alignment: .center)
-
+                
                 Spacer()
-
+                
                 if !(workDay.startTime.contains("OFF") || workDay.startTime.contains("주휴")) {
                     Text("\(formattedWage(Int(workDay.dailyWage)))원")
                         .font(.system(size: 10).monospacedDigit())
