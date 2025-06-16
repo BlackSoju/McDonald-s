@@ -10,8 +10,8 @@ import Foundation
 struct WorkDay: Identifiable {
     let id = UUID()
     let date: Date
-    let startTime: String
-    let endTime: String
+    var startTime: String
+    var endTime: String
     let hoursWorked: Double
     let dailyWage: Double
     var durationHours: Double {

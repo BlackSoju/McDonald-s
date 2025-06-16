@@ -8,20 +8,47 @@
 import SwiftUI
 
 struct WorkDayDetailView: View {
-    let workDay: WorkDay
+    let originalWorkDay: WorkDay
+    @State private var editableStartTime: String
+    @State private var editableEndTime: String
+    @State private var showingEditSheet = false
+
+    init(workDay: WorkDay) {
+        self.originalWorkDay = workDay
+        _editableStartTime = State(initialValue: workDay.startTime)
+        _editableEndTime = State(initialValue: workDay.endTime)
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
                 headerView
 
-                detailCard(icon: "calendar", title: "날짜", value: formattedDate(workDay.date))
-                detailCard(icon: "clock", title: "근무 시간", value: "\(workDay.startTime) - \(workDay.endTime)")
-                detailCard(icon: "hourglass", title: "근무 시간 합계", value: String(format: "%.1f시간", workDay.hoursWorked))
-                detailCard(icon: "dollarsign.circle", title: "일급", value: formattedCurrency(workDay.dailyWage))
+                detailCard(icon: "calendar", title: "날짜", value: formattedDate(originalWorkDay.date))
+                detailCard(icon: "clock", title: "근무 시간", value: "\(editableStartTime) - \(editableEndTime)")
+                detailCard(icon: "hourglass", title: "근무 시간 합계", value: String(format: "%.1f시간", originalWorkDay.hoursWorked))
+                detailCard(icon: "dollarsign.circle", title: "일급", value: formattedCurrency(originalWorkDay.dailyWage))
+
+                Button(action: {
+                    showingEditSheet = true
+                }) {
+                    Text("근무 수정")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                }
+                .padding(.top, 24)
+                .padding(.bottom, 32)
             }
             .padding()
         }
+        .sheet(isPresented: $showingEditSheet) {
+            EditWorkDayView(startTime: $editableStartTime, endTime: $editableEndTime)
+        }
+        .presentationDetents([.fraction(0.65)])
         .navigationTitle("근무 상세")
         .navigationBarTitleDisplayMode(.inline)
     }

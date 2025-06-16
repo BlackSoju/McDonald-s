@@ -22,7 +22,6 @@ struct WorkCalendarView: View {
         )) { identifiableDate in
             if let workDay = viewModel.workDays[identifiableDate.date] {
                 WorkDayDetailView(workDay: workDay)
-                    .presentationDetents([.medium])
             }
         }
     }
