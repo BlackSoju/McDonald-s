@@ -95,11 +95,11 @@ struct CustomTimePicker: View {
 
     var body: some View {
         HStack(spacing: 20) {
-            CustomWheel(selection: $hour, range: 0..<24, color: .hourPickerBG, highlightColor: .hourHighlight)
+            CustomWheel(selection: $hour, range: 0..<24, color: .hourPickerBG, highlightColor: .hourHighlight, unitCount: 24)
             Text(":")
                 .font(.title2.bold())
                 .foregroundColor(.gray)
-            CustomWheel(selection: $minute, range: 0..<60, color: .minutePickerBG, highlightColor: .minuteHighlight)
+            CustomWheel(selection: $minute, range: 0..<60, color: .minutePickerBG, highlightColor: .minuteHighlight, unitCount: 60)
         }
         .frame(height: 240)
         .padding(.horizontal, 32)
@@ -111,26 +111,37 @@ struct CustomWheel: View {
     let range: Range<Int>
     let color: Color
     let highlightColor: Color
+    let unitCount: Int
+
+    private let totalRepeatCount = 100
+
+    var loopedRange: [Int] {
+        Array(repeating: Array(range), count: totalRepeatCount).flatMap { $0 }
+    }
+
+    var middleIndex: Int {
+        (loopedRange.count / 2) - ((loopedRange.count / 2) % unitCount) + selection
+    }
 
     var body: some View {
         GeometryReader { geo in
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: false) {
-                    let loopedRange = Array(range) + Array(range) + Array(range) + Array(range)
                     VStack(spacing: 10) {
-                        ForEach(loopedRange, id: \.self) { i in
-                            Text(String(format: "%02d", i))
-                                .font(.system(size: 24, weight: selection == i ? .black : .regular))
-                                .foregroundColor(selection == i ? .primary : .gray.opacity(0.5))
+                        ForEach(loopedRange.indices, id: \.self) { index in
+                            let value = loopedRange[index]
+                            Text(String(format: "%02d", value))
+                                .font(.system(size: 24, weight: index == middleIndex ? .black : .regular))
+                                .foregroundColor(index == middleIndex ? .primary : .gray.opacity(0.5))
                                 .frame(height: 48)
                                 .frame(maxWidth: .infinity)
-                                .id(i)
+                                .id(index)
                         }
                     }
                     .padding(.vertical, (geo.size.height - 48) / 2)
                 }
                 .onAppear {
-                    proxy.scrollTo(selection, anchor: .center)
+                    proxy.scrollTo(middleIndex, anchor: .center)
                 }
                 .background(
                     ZStack {
@@ -159,11 +170,6 @@ struct CustomWheel: View {
                     }
                 )
                 .clipped()
-                .onChange(of: selection) { newVal in
-                    withAnimation {
-                        proxy.scrollTo(newVal, anchor: .center)
-                    }
-                }
             }
         }
         .frame(width: 124)
