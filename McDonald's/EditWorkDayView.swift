@@ -8,130 +8,170 @@
 import SwiftUI
 
 struct EditWorkDayView: View {
-    @Binding var startTime: String
-    @Binding var endTime: String
+    @ObservedObject var viewModel: EditWorkDayViewModel
     @Environment(\.dismiss) var dismiss
-
     @State private var selectedTab: TimeType = .start
-    @State private var selectedStartHour: Int = 9
-    @State private var selectedStartMinute: Int = 0
-    @State private var selectedEndHour: Int = 18
-    @State private var selectedEndMinute: Int = 0
 
     enum TimeType: String, CaseIterable, Identifiable {
-        case start = "시작 시간"
-        case end = "종료 시간"
-        var id: String { self.rawValue }
+        case start = "출근"
+        case end = "퇴근"
+        var id: String { rawValue }
+        var icon: String {
+            switch self {
+            case .start: return "briefcase.fill"
+            case .end: return "house.fill"
+            }
+        }
+        var activeColor: Color {
+            switch self {
+            case .start: return .workStartColor
+            case .end: return .workEndColor
+            }
+        }
     }
 
     var body: some View {
-        VStack(spacing: 20) {
-            headerView
+        VStack(spacing: 24) {
+            Text("근무 시간 선택")
+                .font(.system(size: 22, weight: .black))
+                .foregroundColor(.textPrimaryColor)
+                .padding(.top, 24)
 
-            Picker("시간 선택", selection: $selectedTab) {
+            HStack(spacing: 12) {
                 ForEach(TimeType.allCases) { type in
-                    Text(type.rawValue).tag(type)
+                    Button {
+                        selectedTab = type
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: type.icon)
+                            Text(type.rawValue)
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(selectedTab == type ? .black : .gray)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            selectedTab == type ? type.activeColor : Color.gray.opacity(0.1)
+                        )
+                        .cornerRadius(16)
+                        .shadow(color: selectedTab == type ? Color.black.opacity(0.05) : .clear, radius: 2, x: 0, y: 1)
+                    }
                 }
             }
-            .pickerStyle(SegmentedPickerStyle())
             .padding(.horizontal)
 
-            timePicker(for: selectedTab)
-
-            Spacer(minLength: 12)
+            CustomTimePicker(
+                hour: selectedTab == .start ? $viewModel.selectedStartHour : $viewModel.selectedEndHour,
+                minute: selectedTab == .start ? $viewModel.selectedStartMinute : $viewModel.selectedEndMinute
+            )
 
             Button(action: {
-                startTime = String(format: "%02d:%02d", selectedStartHour, selectedStartMinute)
-                endTime = String(format: "%02d:%02d", selectedEndHour, selectedEndMinute)
                 dismiss()
             }) {
                 Text("저장")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding()
+                    .font(.system(size: 20, weight: .semibold))
                     .frame(maxWidth: .infinity)
-                    .background(Color.blue)
-                    .cornerRadius(12)
+                    .frame(height: 60)
+                    .background(Color.saveButtonColor)
+                    .foregroundColor(.white)
+                    .cornerRadius(24)
             }
             .padding(.horizontal)
+            .padding(.top, 20)
+
+            Spacer(minLength: 0)
         }
-        .padding(.top)
-        .padding(.horizontal)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .background(Color(.systemBackground))
-        .onAppear {
-            selectedStartHour = hour(from: startTime)
-            selectedStartMinute = minute(from: startTime)
-            selectedEndHour = hour(from: endTime)
-            selectedEndMinute = minute(from: endTime)
-        }
-        .presentationDetents([.height(380)])
+        .padding(.bottom, 20)
+        .background(Color.backgroundColor.ignoresSafeArea())
+        .presentationDetents([.fraction(0.65)])
         .navigationTitle("근무 수정")
         .navigationBarTitleDisplayMode(.inline)
     }
+}
 
-    var headerView: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: "pencil.circle.fill")
-                .font(.title2)
-                .foregroundColor(.white)
-            Text("근무 시간 수정")
-                .font(.title3.bold())
-                .foregroundColor(.white)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(gradient: Gradient(colors: [.blue, .cyan]),
-                           startPoint: .topLeading,
-                           endPoint: .bottomTrailing)
-        )
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 4)
-    }
+struct CustomTimePicker: View {
+    @Binding var hour: Int
+    @Binding var minute: Int
 
-    func timePicker(for type: TimeType) -> some View {
-        let hourBinding = type == .start ? $selectedStartHour : $selectedEndHour
-        let minuteBinding = type == .start ? $selectedStartMinute : $selectedEndMinute
-
-        return HStack(spacing: 8) {
-            Picker("시", selection: hourBinding) {
-                ForEach(0..<24, id: \.self) { hour in
-                    Text(String(format: "%02d", hour))
-                }
-            }
-            .pickerStyle(.wheel)
-            .frame(maxWidth: .infinity)
-
+    var body: some View {
+        HStack(spacing: 20) {
+            CustomWheel(selection: $hour, range: 0..<24, color: .hourPickerBG, highlightColor: .hourHighlight)
             Text(":")
-                .font(.title2)
-
-            Picker("분", selection: minuteBinding) {
-                ForEach([0, 30], id: \.self) { minute in
-                    Text(String(format: "%02d", minute))
-                }
-            }
-            .pickerStyle(.wheel)
-            .frame(maxWidth: .infinity)
+                .font(.title2.bold())
+                .foregroundColor(.gray)
+            CustomWheel(selection: $minute, range: 0..<60, color: .minutePickerBG, highlightColor: .minuteHighlight)
         }
-        .frame(height: 100)
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .shadow(color: Color.primary.opacity(0.05), radius: 8, x: 0, y: 4)
-    }
-
-    func hour(from time: String) -> Int {
-        let components = time.split(separator: ":")
-        return Int(components.first ?? "0") ?? 0
-    }
-
-    func minute(from time: String) -> Int {
-        let components = time.split(separator: ":")
-        return Int(components.last ?? "0") ?? 0
+        .frame(height: 240)
+        .padding(.horizontal, 32)
     }
 }
 
-#Preview {
-    EditWorkDayView(startTime: .constant("09:00"), endTime: .constant("18:00"))
+struct CustomWheel: View {
+    @Binding var selection: Int
+    let range: Range<Int>
+    let color: Color
+    let highlightColor: Color
+
+    var body: some View {
+        GeometryReader { geo in
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: false) {
+                    let loopedRange = Array(range) + Array(range) + Array(range) + Array(range)
+                    VStack(spacing: 10) {
+                        ForEach(loopedRange, id: \.self) { i in
+                            Text(String(format: "%02d", i))
+                                .font(.system(size: 24, weight: selection == i ? .black : .regular))
+                                .foregroundColor(selection == i ? .primary : .gray.opacity(0.5))
+                                .frame(height: 48)
+                                .frame(maxWidth: .infinity)
+                                .id(i)
+                        }
+                    }
+                    .padding(.vertical, (geo.size.height - 48) / 2)
+                }
+                .onAppear {
+                    proxy.scrollTo(selection, anchor: .center)
+                }
+                .background(
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 24)
+                            .fill(color)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24)
+                                    .stroke(Color.white.opacity(0.6), lineWidth: 1)
+                                    .blur(radius: 1)
+                                    .offset(x: -1, y: -1)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24)
+                                    .stroke(Color.black.opacity(0.06), lineWidth: 1)
+                                    .blur(radius: 1)
+                                    .offset(x: 1, y: 1)
+                            )
+                        VStack {
+                            Spacer()
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(highlightColor)
+                                .frame(height: 48)
+                                .shadow(radius: 1)
+                            Spacer()
+                        }
+                    }
+                )
+                .clipped()
+                .onChange(of: selection) { newVal in
+                    withAnimation {
+                        proxy.scrollTo(newVal, anchor: .center)
+                    }
+                }
+            }
+        }
+        .frame(width: 124)
+    }
+}
+
+struct EditWorkDayView_Previews: PreviewProvider {
+    static var previews: some View {
+        EditWorkDayView(viewModel: EditWorkDayViewModel(startTime: "09:00", endTime: "18:00"))
+    }
 }

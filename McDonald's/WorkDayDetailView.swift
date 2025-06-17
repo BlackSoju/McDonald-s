@@ -46,7 +46,11 @@ struct WorkDayDetailView: View {
             .padding()
         }
         .sheet(isPresented: $showingEditSheet) {
-            EditWorkDayView(startTime: $editableStartTime, endTime: $editableEndTime)
+            let viewModel = EditWorkDayViewModel(
+                startTime: editableStartTime,
+                endTime: editableEndTime
+            )
+            EditWorkDayView(viewModel: viewModel)
         }
         .presentationDetents([.fraction(0.65)])
         .navigationTitle("근무 상세")
