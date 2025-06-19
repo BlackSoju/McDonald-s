@@ -130,9 +130,10 @@ struct CustomWheel: View {
                     LazyVStack(spacing: 0) {
                         ForEach(loopedRange.indices, id: \ .self) { index in
                             let value = loopedRange[index]
+                            let isSelected = index == closestIndex
                             Text(String(format: "%02d", value))
-                                .font(.system(size: 24))
-                                .foregroundColor(.gray)
+                                .font(.system(size: 24, weight: isSelected ? .bold : .regular))
+                                .foregroundColor(isSelected ? .primary : .gray.opacity(0.5))
                                 .frame(height: rowHeight)
                                 .frame(maxWidth: .infinity)
                                 .background(
