@@ -68,7 +68,7 @@ struct EditWorkDayView: View {
             Spacer(minLength: 0)
         }
         .padding(.bottom, 20)
-        .background(Color.backgroundColor.ignoresSafeArea())
+        .background(Color.beigeBackground.ignoresSafeArea())
         .presentationDetents([.fraction(0.65)])
         .navigationTitle("근무 수정")
         .navigationBarTitleDisplayMode(.inline)

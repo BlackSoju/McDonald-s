@@ -17,6 +17,7 @@ extension Color {
     static let saveButtonColor = Color(hex: "#60C4AC")
     static let textPrimaryColor = Color(hex: "#6E6E6E")
     static let backgroundColor = Color(hex: "#F5F5F5")
+    static let beigeBackground = Color(hex: "#FFFEF9")
     static let pickerShadow = Color.black.opacity(0.05)
     static let embossHighlight = Color.white.opacity(0.6)
     static let embossShadow = Color.black.opacity(0.1)

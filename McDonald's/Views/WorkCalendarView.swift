@@ -10,11 +10,19 @@ import SwiftUI
 struct WorkCalendarView: View {
     @ObservedObject var viewModel: WorkCalendarViewModel
     @State private var selectedDate: Date?
-    
+
     var body: some View {
-        VStack(spacing: 0) {
-            calendarHeader
-            calendarBody
+        ZStack {
+            Color.beigeBackground.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                calendarHeader
+                Text("총 월급: \(formattedWage(viewModel.totalWageForCurrentMonth()))원")
+                    .font(.subheadline)
+                    .foregroundColor(.textPrimaryColor)
+                    .padding(.bottom, 4)
+                calendarBody
+            }
         }
         .sheet(item: Binding(
             get: { selectedDate.map { IdentifiableDate(date: $0) } },
@@ -25,84 +33,75 @@ struct WorkCalendarView: View {
             }
         }
     }
-    
+
     private var calendarHeader: some View {
         VStack(spacing: 12) {
-            ZStack {
-                // 가운데: currentMonth 텍스트
+            HStack {
+                Button(action: { viewModel.changeMonth(by: -1) }) {
+                    Image(systemName: "chevron.left")
+                        .font(.title3)
+                        .padding(8)
+                        .background(Color.gray.opacity(0.15))
+                        .clipShape(Circle())
+                }
+
+                Spacer()
+
                 Text(monthYearString(from: viewModel.currentMonth))
                     .font(.title2.weight(.bold))
-                    .foregroundColor(.primary)
+                    .foregroundColor(.textPrimaryColor)
 
-                // 좌우: 이전/다음 버튼 + 오늘 버튼
-                HStack {
-                    Button(action: { viewModel.changeMonth(by: -1) }) {
-                        Image(systemName: "chevron.left")
-                            .font(.title3)
-                            .padding(8)
-                            .background(Color(.systemGray6))
-                            .clipShape(Circle())
-                    }
+                Spacer()
 
-                    Spacer()
-
-                    HStack(spacing: 8) {
-                        Button(action: {
-                            withAnimation {
-                                viewModel.jumpToMonth(of: Date())
-                            }
-                        }) {
-                            Text("오늘")
-                                .font(.caption.weight(.medium))
-                                .foregroundColor(.blue)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(Color(.systemGray6))
-                                .clipShape(Capsule())
-                        }
-
-                        Button(action: { viewModel.changeMonth(by: 1) }) {
-                            Image(systemName: "chevron.right")
-                                .font(.title3)
-                                .padding(8)
-                                .background(Color(.systemGray6))
-                                .clipShape(Circle())
-                        }
-                    }
+                Button(action: { viewModel.changeMonth(by: 1) }) {
+                    Image(systemName: "chevron.right")
+                        .font(.title3)
+                        .padding(8)
+                        .background(Color.gray.opacity(0.15))
+                        .clipShape(Circle())
                 }
             }
             .padding(.horizontal)
 
-            Text("총 월급: \(formattedWage(viewModel.totalWageForCurrentMonth()))원")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+            Button(action: {
+                withAnimation {
+                    viewModel.jumpToMonth(of: Date())
+                }
+            }) {
+                Text("오늘")
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.gray.opacity(0.15))
+                    .clipShape(Capsule())
+            }
         }
-        .padding(.top, 16)
+        .padding(.vertical, 12)
     }
 
-    
-    
     private var calendarBody: some View {
         GeometryReader { geometry in
-            let width = geometry.size.width / 7
+            let spacing: CGFloat = 1
+            let width = (geometry.size.width - (spacing * 6)) / 7
             let height = (geometry.size.height - 32) / 6
             let weekdays = ["일", "월", "화", "수", "목", "금", "토"]
             let dates = viewModel.generateCurrentMonthDates()
-            
+
             VStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    ForEach(weekdays, id: \.self) { day in
+                HStack(spacing: spacing) {
+                    ForEach(weekdays, id: \ .self) { day in
                         Text(day)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundColor(day == "일" ? .red : (day == "토" ? .blue : .gray))
-                            .frame(width: width, height: 32)
+                            .foregroundColor(day == "일" ? .red : (day == "토" ? .blue : .textPrimaryColor))
+                            .frame(width: width, height: 28)
                     }
                 }
-                
-                VStack(spacing: 1) {
-                    ForEach(0..<6, id: \.self) { row in
-                        HStack(spacing: 0) {
-                            ForEach(0..<7, id: \.self) { column in
+
+                VStack(spacing: spacing) {
+                    ForEach(0..<6, id: \ .self) { row in
+                        HStack(spacing: spacing) {
+                            ForEach(0..<7, id: \ .self) { column in
                                 let index = row * 7 + column
                                 if index < dates.count, let date = dates[index] {
                                     CalendarCell(
@@ -130,13 +129,13 @@ struct WorkCalendarView: View {
             }
         }
     }
-    
+
     func monthYearString(from date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy년 M월"
         return formatter.string(from: date)
     }
-    
+
     func formattedWage(_ amount: Int) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
@@ -152,57 +151,51 @@ struct CalendarCell: View {
     let width: CGFloat
     let height: CGFloat
     let onTap: () -> Void
-    
+
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: .embossShadow, radius: 1.5, x: 1, y: 1)
+                .shadow(color: .embossHighlight, radius: 1, x: -1, y: -1)
+
+            VStack(alignment: .trailing, spacing: 2) {
+                HStack {
+                    Spacer()
+                    Text("\(Calendar.current.component(.day, from: date))")
+                        .font(.caption2.weight(.medium))
+                        .foregroundColor(isToday ? .white : .textPrimaryColor)
+                        .frame(width: 24, height: 24)
+                        .background(isToday ? Color.blue : Color.clear)
+                        .clipShape(Circle())
+                        .padding(.top, 6)
+                        .padding(.trailing, 6)
+                }
+
                 Spacer()
-                Text("\(Calendar.current.component(.day, from: date))")
-                    .font(.footnote.weight(.medium))
-                    .foregroundColor(isToday ? .white : .primary)
-                    .frame(width: 24, height: 24)
-                    .background(isToday ? Color.blue : Color.clear)
-                    .clipShape(Circle())
-                    .padding([.top, .trailing], 4)
-            }
-            
-            Spacer()
-            
-            if let workDay = workDay {
-                VStack(spacing: 2) {
+
+                if let workDay = workDay {
                     if workDay.startTime.contains("OFF") || workDay.startTime.contains("주휴") {
                         Text(workDay.startTime.replacingOccurrences(of: "~", with: ""))
-                            .font(.system(size: 10))
-                            .foregroundColor(workDay.startTime.contains("주휴") ? .orange : .gray)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.textPrimaryColor)
                     } else {
-                        Text("\(String(format: "%.1f", workDay.hoursWorked))시간")
-                            .font(.system(size: 10))
-                            .foregroundColor(.gray)
+                        Text("\(workDay.startTime) ~ \(workDay.endTime)")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.mint)
                     }
-                }
-                .frame(maxHeight: .infinity, alignment: .center)
-                
-                Spacer()
-                
-                if !(workDay.startTime.contains("OFF") || workDay.startTime.contains("주휴")) {
+
                     Text("\(formattedWage(Int(workDay.dailyWage)))원")
-                        .font(.system(size: 10).monospacedDigit())
+                        .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.blue)
-                        .padding(.bottom, 4)
+                        .padding(.bottom, 6)
                 } else {
-                    Spacer(minLength: 16)
+                    Spacer(minLength: 24)
                 }
-            } else {
-                Spacer()
-                Spacer(minLength: 16)
             }
+            .frame(width: width - 6, height: height - 6)
         }
         .frame(width: width, height: height)
-        .background(
-            Color(uiColor: .systemBackground)
-                .shadow(color: Color.black.opacity(0.06), radius: 2, x: 0, y: 1)
-        )
-        .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
     }
 }
