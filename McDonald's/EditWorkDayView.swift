@@ -113,35 +113,51 @@ struct CustomWheel: View {
     let highlightColor: Color
     let unitCount: Int
 
-    private let totalRepeatCount = 100
+    private let totalRepeatCount = 50
+    private let rowHeight: CGFloat = 48
 
     var loopedRange: [Int] {
         Array(repeating: Array(range), count: totalRepeatCount).flatMap { $0 }
     }
 
-    var middleIndex: Int {
-        (loopedRange.count / 2) - ((loopedRange.count / 2) % unitCount) + selection
-    }
+    @GestureState private var isDragging = false
+    @State private var closestIndex: Int = 0
 
     var body: some View {
         GeometryReader { geo in
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 10) {
-                        ForEach(loopedRange.indices, id: \.self) { index in
+                    LazyVStack(spacing: 0) {
+                        ForEach(loopedRange.indices, id: \ .self) { index in
                             let value = loopedRange[index]
                             Text(String(format: "%02d", value))
-                                .font(.system(size: 24, weight: index == middleIndex ? .black : .regular))
-                                .foregroundColor(index == middleIndex ? .primary : .gray.opacity(0.5))
-                                .frame(height: 48)
+                                .font(.system(size: 24))
+                                .foregroundColor(.gray)
+                                .frame(height: rowHeight)
                                 .frame(maxWidth: .infinity)
+                                .background(
+                                    GeometryReader { itemGeo in
+                                        Color.clear
+                                            .preference(key: OffsetPreferenceKey.self, value: [index: abs(itemGeo.frame(in: .named("scrollView")).midY - geo.size.height / 2)])
+                                    }
+                                )
                                 .id(index)
                         }
                     }
-                    .padding(.vertical, (geo.size.height - 48) / 2)
+                    .padding(.vertical, (geo.size.height - rowHeight) / 2)
                 }
-                .onAppear {
-                    proxy.scrollTo(middleIndex, anchor: .center)
+                .coordinateSpace(name: "scrollView")
+                .onReceive(Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()) { _ in
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        proxy.scrollTo(closestIndex, anchor: .center)
+                    }
+                }
+                .onPreferenceChange(OffsetPreferenceKey.self) { distances in
+                    if let closest = distances.min(by: { $0.value < $1.value })?.key {
+                        let value = loopedRange[closest] % unitCount
+                        selection = value
+                        closestIndex = closest
+                    }
                 }
                 .background(
                     ZStack {
@@ -163,16 +179,22 @@ struct CustomWheel: View {
                             Spacer()
                             RoundedRectangle(cornerRadius: 10)
                                 .fill(highlightColor)
-                                .frame(height: 48)
+                                .frame(height: rowHeight)
                                 .shadow(radius: 1)
                             Spacer()
                         }
                     }
                 )
-                .clipped()
             }
         }
         .frame(width: 124)
+    }
+}
+
+struct OffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: [Int: CGFloat] = [:]
+    static func reduce(value: inout [Int: CGFloat], nextValue: () -> [Int: CGFloat]) {
+        value.merge(nextValue()) { $1 }
     }
 }
 
