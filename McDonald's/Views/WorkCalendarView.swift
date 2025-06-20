@@ -159,7 +159,7 @@ struct CalendarCell: View {
                 .shadow(color: .embossShadow, radius: 1.5, x: 1, y: 1)
                 .shadow(color: .embossHighlight, radius: 1, x: -1, y: -1)
 
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(spacing: 4) {
                 HStack {
                     Spacer()
                     Text("\(Calendar.current.component(.day, from: date))")
@@ -175,20 +175,27 @@ struct CalendarCell: View {
                 Spacer()
 
                 if let workDay = workDay {
-                    if workDay.startTime.contains("OFF") || workDay.startTime.contains("주휴") {
-                        Text(workDay.startTime.replacingOccurrences(of: "~", with: ""))
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.textPrimaryColor)
-                    } else {
-                        Text("\(workDay.startTime) ~ \(workDay.endTime)")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.mint)
-                    }
+                    VStack(spacing: 2) {
+                        if workDay.startTime.contains("OFF") || workDay.startTime.contains("주휴") {
+                            Text(workDay.startTime.replacingOccurrences(of: "~", with: ""))
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.textPrimaryColor)
+                        } else {
+                            Text(String(format: "%.1f시간", workDay.hoursWorked))
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.mint)
+                        }
 
-                    Text("\(formattedWage(Int(workDay.dailyWage)))원")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.blue)
-                        .padding(.bottom, 6)
+                        Spacer(minLength: 4)
+
+                        Text("\(formattedWage(Int(workDay.dailyWage)))원")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.blue)
+                            .frame(maxWidth: .infinity)
+                            .multilineTextAlignment(.center)
+                            .padding(.bottom, 6)
+                    }
+                    .frame(maxHeight: .infinity, alignment: .center)
                 } else {
                     Spacer(minLength: 24)
                 }
