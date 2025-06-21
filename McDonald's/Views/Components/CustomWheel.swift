@@ -59,14 +59,16 @@ struct CustomWheel: View {
                 .onPreferenceChange(OffsetPreferenceKey.self) { distances in
                     scrollDebounceTimer?.invalidate()
                     scrollDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { _ in
-                        guard let closest = distances.min(by: { $0.value < $1.value })?.key else { return }
-                        let offset = distances[closest] ?? 0
-                        if closest != closestIndex || offset > 1.0 {
-                            closestIndex = closest
-                            let value = loopedRange[closest % loopedRange.count] % unitCount
-                            selection = value
-                            withAnimation(.interactiveSpring(response: 0.45, dampingFraction: 0.85, blendDuration: 0.25)) {
-                                proxy.scrollTo(closest, anchor: .center)
+                        Task { @MainActor in
+                            guard let closest = distances.min(by: { $0.value < $1.value })?.key else { return }
+                            let offset = distances[closest] ?? 0
+                            if closest != closestIndex || offset > 1.0 {
+                                closestIndex = closest
+                                let value = loopedRange[closest % loopedRange.count] % unitCount
+                                selection = value
+                                withAnimation(.interactiveSpring(response: 0.45, dampingFraction: 0.85, blendDuration: 0.25)) {
+                                    proxy.scrollTo(closest, anchor: .center)
+                                }
                             }
                         }
                     }

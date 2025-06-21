@@ -36,49 +36,59 @@ struct WorkCalendarView: View {
 
     private var calendarHeader: some View {
         VStack(spacing: 12) {
-            HStack {
+            HStack(spacing: 8) {
                 Button(action: { viewModel.changeMonth(by: -1) }) {
                     Image(systemName: "chevron.left")
                         .font(.title3)
-                        .padding(8)
-                        .background(Color.gray.opacity(0.15))
-                        .clipShape(Circle())
+                        .foregroundColor(.textPrimaryColor)
+                        .frame(width: 36, height: 36)
+                        .background(Color.white)
+                        .cornerRadius(12)
+                        .shadow(color: .embossShadow, radius: 1.5, x: 1, y: 1)
+                        .shadow(color: .embossHighlight, radius: 1, x: -1, y: -1)
                 }
 
-                Spacer()
+                Spacer(minLength: 0)
 
+                HStack(spacing: 8) {
+                    Button(action: {
+                        withAnimation {
+                            viewModel.jumpToMonth(of: Date())
+                        }
+                    }) {
+                        Text("오늘")
+                            .font(.caption.weight(.medium))
+                            .foregroundColor(.blue)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color.white)
+                            .cornerRadius(12)
+                            .shadow(color: .embossShadow, radius: 1.5, x: 1, y: 1)
+                            .shadow(color: .embossHighlight, radius: 1, x: -1, y: -1)
+                    }
+
+                    Button(action: { viewModel.changeMonth(by: 1) }) {
+                        Image(systemName: "chevron.right")
+                            .font(.title3)
+                            .foregroundColor(.textPrimaryColor)
+                            .frame(width: 36, height: 36)
+                            .background(Color.white)
+                            .cornerRadius(12)
+                            .shadow(color: .embossShadow, radius: 1.5, x: 1, y: 1)
+                            .shadow(color: .embossHighlight, radius: 1, x: -1, y: -1)
+                    }
+                }
+            }
+            .overlay(
                 Text(monthYearString(from: viewModel.currentMonth))
                     .font(.title2.weight(.bold))
                     .foregroundColor(.textPrimaryColor)
-
-                Spacer()
-
-                Button(action: { viewModel.changeMonth(by: 1) }) {
-                    Image(systemName: "chevron.right")
-                        .font(.title3)
-                        .padding(8)
-                        .background(Color.gray.opacity(0.15))
-                        .clipShape(Circle())
-                }
-            }
+            )
             .padding(.horizontal)
-
-            Button(action: {
-                withAnimation {
-                    viewModel.jumpToMonth(of: Date())
-                }
-            }) {
-                Text("오늘")
-                    .font(.caption.weight(.medium))
-                    .foregroundColor(.blue)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.gray.opacity(0.15))
-                    .clipShape(Capsule())
-            }
         }
         .padding(.vertical, 12)
     }
+
 
     private var calendarBody: some View {
         GeometryReader { geometry in
